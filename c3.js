@@ -530,10 +530,10 @@
         $$.y.domain($$.getYDomain(targetsToShow, 'y', xDomainForZoom));
         $$.y2.domain($$.getYDomain(targetsToShow, 'y2', xDomainForZoom));
 
-        if (!config.axis_y_tick_values && config.axis_y_tick_count) {
+        if (!config.axis_y_tick_values && config.axis_y_tick_count && config.axis_y_tick_exact) {
             $$.yAxis.tickValues($$.axis.generateTickValues($$.y.domain(), config.axis_y_tick_count));
         }
-        if (!config.axis_y2_tick_values && config.axis_y2_tick_count) {
+        if (!config.axis_y2_tick_values && config.axis_y2_tick_count && config.axis_y2_tick_exact) {
             $$.y2Axis.tickValues($$.axis.generateTickValues($$.y2.domain(), config.axis_y2_tick_count));
         }
 
@@ -1191,6 +1191,7 @@
             axis_y_tick_values: null,        
             axis_y_tick_rotate: 0,
             axis_y_tick_count: undefined,
+            axis_y_tick_exact: true,
             axis_y_tick_time_value: undefined,
             axis_y_tick_time_interval: undefined,
             axis_y_padding: {},
@@ -1206,6 +1207,7 @@
             axis_y2_tick_outer: true,
             axis_y2_tick_values: null,
             axis_y2_tick_count: undefined,
+            axis_y2_tick_exact: true,
             axis_y2_padding: {},
             axis_y2_default: undefined,
             // grid
@@ -1407,8 +1409,8 @@
 
         $$.xAxis = $$.axis.getXAxis($$.x, $$.xOrient, $$.xAxisTickFormat, $$.xAxisTickValues, config.axis_x_tick_outer);
         $$.subXAxis = $$.axis.getXAxis($$.subX, $$.subXOrient, $$.xAxisTickFormat, $$.xAxisTickValues, config.axis_x_tick_outer);
-        $$.yAxis = $$.axis.getYAxis($$.y, $$.yOrient, config.axis_y_tick_format, $$.yAxisTickValues, config.axis_y_tick_outer);
-        $$.y2Axis = $$.axis.getYAxis($$.y2, $$.y2Orient, config.axis_y2_tick_format, $$.y2AxisTickValues, config.axis_y2_tick_outer);
+        $$.yAxis = $$.axis.getYAxis($$.y, $$.yOrient, config.axis_y_tick_format, $$.yAxisTickValues, config.axis_y_tick_outer, undefined, undefined, config.axis_y_tick_count);
+        $$.y2Axis = $$.axis.getYAxis($$.y2, $$.y2Orient, config.axis_y2_tick_format, $$.y2AxisTickValues, config.axis_y2_tick_outer, undefined, undefined, config.axis_y2_tick_count);
 
         // Set initialized scales to brush and zoom
         if (!forInit) {
@@ -4441,12 +4443,13 @@
         }
         return tickValues;
     };
-    Axis.prototype.getYAxis = function getYAxis(scale, orient, tickFormat, tickValues, withOuterTick, withoutTransition, withoutRotateTickText) {
+    Axis.prototype.getYAxis = function getYAxis(scale, orient, tickFormat, tickValues, withOuterTick, withoutTransition, withoutRotateTickText, tickCount) {
         var $$ = this.owner, config = $$.config,
             axisParams = {
                 withOuterTick: withOuterTick,
                 withoutTransition: withoutTransition,
-                tickTextRotate: withoutRotateTickText ? 0 : config.axis_y_tick_rotate
+                tickTextRotate: withoutRotateTickText ? 0 : config.axis_y_tick_rotate,
+                tickCount: tickCount
             },
             axis = c3_axis($$.d3, axisParams).scale(scale).orient(orient).tickFormat(tickFormat);
         if ($$.isTimeSeriesY()) {
@@ -4640,10 +4643,10 @@
             targetsToShow = $$.filterTargetsToShow($$.data.targets);
             if (id === 'y') {
                 scale = $$.y.copy().domain($$.getYDomain(targetsToShow, 'y'));
-                axis = this.getYAxis(scale, $$.yOrient, config.axis_y_tick_format, $$.yAxisTickValues, false, true, true);
+                axis = this.getYAxis(scale, $$.yOrient, config.axis_y_tick_format, $$.yAxisTickValues, false, true, true, config.axis_y_tick_count);
             } else if (id === 'y2') {
                 scale = $$.y2.copy().domain($$.getYDomain(targetsToShow, 'y2'));
-                axis = this.getYAxis(scale, $$.y2Orient, config.axis_y2_tick_format, $$.y2AxisTickValues, false, true, true);
+                axis = this.getYAxis(scale, $$.y2Orient, config.axis_y2_tick_format, $$.y2AxisTickValues, false, true, true, config.axis_y2_tick_count);
             } else {
                 scale = $$.x.copy().domain($$.getXDomain(targetsToShow));
                 axis = this.getXAxis(scale, $$.xOrient, $$.xAxisTickFormat, $$.xAxisTickValues, false, true, true);
@@ -7035,10 +7038,11 @@
             var start = domain[0], stop = domain[domain.length - 1];
             return start < stop ? [ start, stop ] : [ stop, start ];
         }
-        function generateTicks(scale) {
+        function generateTicks(scale, count) {
             var i, domain, ticks = [];
             if (scale.ticks) {
-                return scale.ticks.apply(scale, tickArguments);
+                count = count ? [count] : tickArguments;
+                return scale.ticks.apply(scale, count);
             }
             domain = scale.domain();
             for (i = Math.ceil(domain[0]); i < domain[1]; i++) {
@@ -7091,7 +7095,7 @@
 
                 var scale0 = this.__chart__ || scale, scale1 = this.__chart__ = copyScale();
 
-                var ticks = tickValues ? tickValues : generateTicks(scale1),
+                var ticks = tickValues ? tickValues : generateTicks(scale1, params.tickCount),
                     tick = g.selectAll(".tick").data(ticks, scale1),
                     tickEnter = tick.enter().insert("g", ".domain").attr("class", "tick").style("opacity", 1e-6),
                     // MEMO: No exit transition. The reason is this transition affects max tick width calculation because old tick will be included in the ticks.
