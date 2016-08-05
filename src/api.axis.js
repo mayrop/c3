@@ -9,6 +9,23 @@ c3_chart_fn.axis.labels = function (labels) {
     }
     // TODO: return some values?
 };
+c3_chart_fn.axis.show = function (show) {
+    var $$ = this.internal, config = $$.config;
+    if (arguments.length) {
+        if (typeof show === 'object') {
+            if (isDefined(show.x)) { config.axis_x_show = show.x; }
+            if (isDefined(show.y)) { config.axis_y_show = show.y; }
+            if (isDefined(show.y2)) { config.axis_y2_show = show.y2; }
+        }
+        $$.redraw({withUpdateOrgXDomain: true, withUpdateXDomain: true});
+    } else {
+        return {
+            x: config.axis_x_show,
+            y: config.axis_y_show,
+            y2: config.axis_y2_show
+        };
+    }
+};
 c3_chart_fn.axis.max = function (max) {
     var $$ = this.internal, config = $$.config;
     if (arguments.length) {
